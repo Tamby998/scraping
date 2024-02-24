@@ -3,6 +3,7 @@ import re
 from typing import List
 
 from selectolax.parser import HTMLParser
+from bs4 import BeautifulSoup
 from loguru import logger
 import sys
 import requests
@@ -63,6 +64,7 @@ def extract_price_from_page(tree: HTMLParser) -> float:
     :param tree: Objet HTMLParser de la page du livre
     :return: Le prix unitaire du livre
     """
+
     price_node = tree.css_first("p.price_color")
     if price_node:
         prince_string = price_node.text()
@@ -84,7 +86,16 @@ def extract_stock_quantity_page(tree: HTMLParser) -> int:
     :param tree: Objet HTMLParser de la page du livre
     :return: Le nombre de livre en stock
     """
-    return 1
+    try:
+        stock_node = tree.css_first("p.instock.availability")
+        res = re.findall(f"\d+", stock_node.text())[0]
+        return int(res)
+    except AttributeError as e:
+        logger.error(f"Aucun noeud 'p.instock.availability' n'a été trouvé: {e}")
+        return 0
+    except IndexError as e:
+        logger.error(f"Aucun nombre n'a été trouvé dans le noeud: {e}")
+        return 0
 
 
 def main():
@@ -97,6 +108,7 @@ def main():
 
     return sum(total_price)
 
+
 if __name__ == '__main__':
-    url ="https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
-    get_book_price(url=url)
+    url = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
+    print(get_book_price(url=url))
