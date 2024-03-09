@@ -1,6 +1,7 @@
 import sys
 import re
 from typing import List
+from urllib.parse import urljoin
 
 from selectolax.parser import HTMLParser
 from loguru import logger
@@ -11,6 +12,7 @@ logger.remove()
 logger.add("books.log", rotation="500kb", level="WARNING")
 logger.add(sys.stderr, level="INFO")
 
+BAS_URL = "https://books.toscrape.com/index.html"
 
 def get_all_books_urls(url: str) -> List[str]:
     """
@@ -36,8 +38,12 @@ def get_all_books_urls_on_page(tree: HTMLParser) -> List[str]:
     :param tree: Objet HTMLParser de la page
     :return: Liste des URLs de tous les livres sur la page
     """
-    pass
-
+    try:
+        books_links_nodes = tree.css("h3 > a")
+        return [urljoin(BAS_URL, link.attributes["href"]) for link in books_links_nodes if "href" in link.attributes]
+    except Exception as e:
+        logger.error(f"Erreur lors de l'extraction des URLs des livres de notre fonction {e}")
+        return []
 
 def get_book_price(url: str) -> float:
     """
@@ -98,8 +104,7 @@ def extract_stock_quantity_page(tree: HTMLParser) -> int:
 
 
 def main():
-    BASE_URL = "https://books.toscrape.com/index.html"
-    all_books_urls = get_all_books_urls(url=BASE_URL)
+    all_books_urls = get_all_books_urls(url=BAS_URL)
     total_price = []
     for book_url in all_books_urls:
         price = get_book_price(url=book_url)
@@ -109,5 +114,6 @@ def main():
 
 
 if __name__ == '__main__':
-    url = "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html"
-    print(get_book_price(url=url))
+    r = requests.get(BAS_URL)
+    tree = HTMLParser(r.text)
+    print(get_all_books_urls_on_page(tree=tree))
