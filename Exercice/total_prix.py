@@ -3,7 +3,6 @@ import re
 from typing import List
 
 from selectolax.parser import HTMLParser
-from bs4 import BeautifulSoup
 from loguru import logger
 import sys
 import requests
