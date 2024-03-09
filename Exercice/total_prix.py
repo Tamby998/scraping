@@ -22,18 +22,35 @@ def get_all_books_urls(url: str) -> List[str]:
     :param url: URL de depart
     :return: liste de toutes les URLs de toutes les pages
     """
-    pass
+    urls = []
+    while True:
+        logger.info(f"Début du scrapping pour la page: {url}")
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erreur lors de la requête HTTP sur la page {url}: {e}")
+            continue
+        tree = HTMLParser(response.text)
+        books_urls = get_all_books_urls_on_page(tree)
+        urls.extend(books_urls)
 
+        url = get_next_page_url(url, tree)
+        if not url:
+            break
 
-def get_next_page_url(tree: HTMLParser) -> str | None:
+    return urls
+
+def get_next_page_url(url: str, tree: HTMLParser) -> str | None:
     """
     recupere l'url de la page suivante à partir du HTML d'une page donnéé
+    :param url: URL pour la page courante
     :param tree: Objet HTMLParser de la page
     :return: URL de la page suivante
     """
     next_page_node = tree.css_first("li.next > a")
     if next_page_node and "href" in next_page_node.attributes:
-        return urljoin(BAS_URL, next_page_node.attributes["href"])
+        return urljoin(url, next_page_node.attributes["href"])
     else:
         logger.info("Aucun bouton next trouve sur la page")
         return None
@@ -122,6 +139,4 @@ def main():
 
 
 if __name__ == '__main__':
-    r = requests.get(BAS_URL)
-    tree = HTMLParser(r.text)
-    print(get_next_page_url(tree=tree))
+    get_all_books_urls(BAS_URL)
