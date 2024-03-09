@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import re
 from typing import List
@@ -23,13 +25,19 @@ def get_all_books_urls(url: str) -> List[str]:
     pass
 
 
-def get_next_page_url(tree: HTMLParser) -> str:
+def get_next_page_url(tree: HTMLParser) -> str | None:
     """
-    recupere l'rul de la page suivante à partir du HTML d'une page donnéé
+    recupere l'url de la page suivante à partir du HTML d'une page donnéé
     :param tree: Objet HTMLParser de la page
     :return: URL de la page suivante
     """
-    pass
+    next_page_node = tree.css_first("li.next > a")
+    if next_page_node and "href" in next_page_node.attributes:
+        return urljoin(BAS_URL, next_page_node.attributes["href"])
+    else:
+        logger.info("Aucun bouton next trouve sur la page")
+        return None
+
 
 
 def get_all_books_urls_on_page(tree: HTMLParser) -> List[str]:
@@ -116,4 +124,4 @@ def main():
 if __name__ == '__main__':
     r = requests.get(BAS_URL)
     tree = HTMLParser(r.text)
-    print(get_all_books_urls_on_page(tree=tree))
+    print(get_next_page_url(tree=tree))
