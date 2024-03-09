@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import random
 import sys
 import re
+import time
 from typing import List
 from urllib.parse import urljoin
 
@@ -24,21 +26,22 @@ def get_all_books_urls(url: str) -> List[str]:
     """
     urls = []
 
-    while True:
-        logger.info(f"Début du scrapping pour la page: {url}")
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Erreur lors de la requête HTTP sur la page {url}: {e}")
-            continue
-        tree = HTMLParser(response.text)
-        books_urls = get_all_books_urls_on_page(url, tree)
-        urls.extend(books_urls)
+    with requests.Session() as session:
+        while True:
+            logger.info(f"Début du scrapping pour la page: {url}")
+            try:
+                response = session.get(url)
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Erreur lors de la requête HTTP sur la page {url}: {e}")
+                continue
+            tree = HTMLParser(response.text)
+            books_urls = get_all_books_urls_on_page(url, tree)
+            urls.extend(books_urls)
 
-        url = get_next_page_url(url, tree)
-        if not url:
-            break
+            url = get_next_page_url(url, tree)
+            if not url:
+                break
 
 
     return urls
@@ -73,14 +76,17 @@ def get_all_books_urls_on_page(url: str, tree: HTMLParser) -> List[str]:
         logger.error(f"Erreur lors de l'extraction des URLs des livres de notre fonction {e}")
         return []
 
-def get_book_price(url: str) -> float:
+def get_book_price(url: str, session: requests.Session = None) -> float:
     """
     Recupere le prix d'un livre à partir de son URL
     :param url: URL de la page du livre
     :return: Prix du livre multiplie par le nombre de livres en stock
     """
     try:
-        response = requests.get(url)
+        if session:
+            response = session.get(url)
+        else:
+            response = requests.get(url)
         response.raise_for_status()
         tree = HTMLParser(response.text)
         price = extract_price_from_page(tree=tree)
@@ -137,9 +143,11 @@ def main():
     base_url = "https://books.toscrape.com/index.html"
     all_books_urls = get_all_books_urls(url=base_url)
     total_price = []
-    for book_url in all_books_urls:
-        price = get_book_price(url=book_url)
-        total_price.append(price)
+    with requests.Session() as session:
+        for book_url in all_books_urls:
+            price = get_book_price(url=book_url, session=session)
+            total_price.append(price)
+            time.sleep(random.uniform(0.5, 1))
 
     return sum(total_price)
 
