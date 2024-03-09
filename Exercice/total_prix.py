@@ -23,6 +23,7 @@ def get_all_books_urls(url: str) -> List[str]:
     :return: liste de toutes les URLs de toutes les pages
     """
     urls = []
+
     while True:
         logger.info(f"Début du scrapping pour la page: {url}")
         try:
@@ -32,12 +33,13 @@ def get_all_books_urls(url: str) -> List[str]:
             logger.error(f"Erreur lors de la requête HTTP sur la page {url}: {e}")
             continue
         tree = HTMLParser(response.text)
-        books_urls = get_all_books_urls_on_page(tree)
+        books_urls = get_all_books_urls_on_page(url, tree)
         urls.extend(books_urls)
 
         url = get_next_page_url(url, tree)
         if not url:
             break
+
 
     return urls
 
@@ -57,15 +59,16 @@ def get_next_page_url(url: str, tree: HTMLParser) -> str | None:
 
 
 
-def get_all_books_urls_on_page(tree: HTMLParser) -> List[str]:
+def get_all_books_urls_on_page(url: str, tree: HTMLParser) -> List[str]:
     """
     Récupère toutes les urls des livres présent sur une page.
+    :param url: url de la page qui contient les livres
     :param tree: Objet HTMLParser de la page
     :return: Liste des URLs de tous les livres sur la page
     """
     try:
         books_links_nodes = tree.css("h3 > a")
-        return [urljoin(BAS_URL, link.attributes["href"]) for link in books_links_nodes if "href" in link.attributes]
+        return [urljoin(url, link.attributes["href"]) for link in books_links_nodes if "href" in link.attributes]
     except Exception as e:
         logger.error(f"Erreur lors de l'extraction des URLs des livres de notre fonction {e}")
         return []
@@ -82,7 +85,9 @@ def get_book_price(url: str) -> float:
         tree = HTMLParser(response.text)
         price = extract_price_from_page(tree=tree)
         stock = extract_stock_quantity_page(tree=tree)
-        return price * stock
+        price_stock = price * stock
+        logger.info(f"Get book price at {url} : found {price_stock}")
+        return price_stock
     except requests.exceptions.RequestException as e:
         logger.error(f"Erreur lors de la requête HTTP: {e}")
         return 0.0
@@ -129,7 +134,8 @@ def extract_stock_quantity_page(tree: HTMLParser) -> int:
 
 
 def main():
-    all_books_urls = get_all_books_urls(url=BAS_URL)
+    base_url = "https://books.toscrape.com/index.html"
+    all_books_urls = get_all_books_urls(url=base_url)
     total_price = []
     for book_url in all_books_urls:
         price = get_book_price(url=book_url)
@@ -139,4 +145,4 @@ def main():
 
 
 if __name__ == '__main__':
-    get_all_books_urls(BAS_URL)
+    print(main())
